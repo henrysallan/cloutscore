@@ -1,38 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { getProfiles } from '../services/database';
-import { Profile } from '../types';
+// src/components/RankingList.tsx
+import React from 'react';
+import { UserProfile } from '../types';
+import { getCachedScore } from '../utils/scoreCache';
 
-const RankingList: React.FC = () => {
-    const [profiles, setProfiles] = useState<Profile[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+interface RankingListProps {
+  profiles: UserProfile[];
+}
 
-    useEffect(() => {
-        const fetchProfiles = async () => {
-            setLoading(true);
-            const fetchedProfiles = await getProfiles();
-            setProfiles(fetchedProfiles);
-            setLoading(false);
-        };
-
-        fetchProfiles();
-    }, []);
-
-    if (loading) {
-        return <div>Loading...</div>;
-    }
-
+function RankingList({ profiles }: RankingListProps) {
+  if (profiles.length === 0) {
     return (
-        <div>
-            <h1>Rankings</h1>
-            <ul>
-                {profiles.map((profile, index) => (
-                    <li key={profile.id}>
-                        {index + 1}. {profile.name} - Score: {profile.score}
-                    </li>
-                ))}
-            </ul>
-        </div>
+      <div className="loading">
+        No profiles yet. Be the first to join!
+      </div>
     );
-};
+  }
+
+  // Create profiles with cached scores where available
+  const profilesWithCachedScores = profiles.map(profile => {
+    const cachedScore = getCachedScore(profile.id);
+    return {
+      ...profile,
+      displayScore: cachedScore !== null ? cachedScore : profile.score
+    };
+  });
+
+  // Re-sort by display score
+  const sortedProfiles = [...profilesWithCachedScores].sort((a, b) => b.displayScore - a.displayScore);
+
+  return (
+    <div className="rankings-list">
+      {sortedProfiles.map((profile, index) => {
+        const fullName = `${profile.firstName} ${profile.lastName}`.trim();
+        
+        return (
+          <div key={profile.id} className="ranking-card">
+            <div className="rank-number">#{index + 1}</div>
+            <img 
+              src={profile.imageUrl || '/default-avatar.png'} 
+              alt={fullName}
+              className="ranking-image"
+            />
+            <div className="ranking-info">
+              <div className="ranking-name">{fullName}</div>
+              <div className="ranking-score">{profile.displayScore}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default RankingList;

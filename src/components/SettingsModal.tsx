@@ -1,76 +1,85 @@
+﻿// src/components/SettingsModal.tsx
 import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { uploadProfilePhoto } from '../services/storage';
+import { useAuth } from '../contexts/AuthContext';
+import { uploadProfileImage } from '../services/storage';
+import { updateProfileImage } from '../services/database';
 
-const SettingsModal = () => {
-    const { user, updateUserProfile } = useAuth();
-    const [firstName, setFirstName] = useState(user?.firstName || '');
-    const [lastName, setLastName] = useState(user?.lastName || '');
-    const [profilePhoto, setProfilePhoto] = useState(null);
-    const [loading, setLoading] = useState(false);
+interface SettingsModalProps {
+  onClose: () => void;
+}
 
-    const handlePhotoChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            setProfilePhoto(file);
-        }
-    };
+function SettingsModal({ onClose }: SettingsModalProps) {
+  const { user, profile, signOutUser } = useAuth();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        setLoading(true);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedFile || !user) return;
 
-        try {
-            let photoURL = user.photoURL;
-            if (profilePhoto) {
-                photoURL = await uploadProfilePhoto(profilePhoto);
-            }
-            await updateUserProfile({ firstName, lastName, photoURL });
-            alert('Profile updated successfully!');
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            alert('Failed to update profile. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    setUploading(true);
+    try {
+      const url = await uploadProfileImage(selectedFile, user.uid);
+      await updateProfileImage(user.uid, url);
+      alert('Photo updated!');
+      onClose();
+    } catch (error) {
+      alert('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
 
-    return (
-        <div className="settings-modal">
-            <h2>Update Profile</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>First Name:</label>
-                    <input
-                        type="text"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label>Last Name:</label>
-                    <input
-                        type="text"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                    />
-                </div>
-                <div>
-                    <label>Profile Photo:</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                    />
-                </div>
-                <button type="submit" disabled={loading}>
-                    {loading ? 'Updating...' : 'Update Profile'}
-                </button>
-            </form>
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      onClose();
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
+  };
+
+  if (!profile) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Settings</h2>
+        
+        {profile.imageUrl && (
+          <div className="current-photo">
+            <img src={profile.imageUrl} alt={profile.firstName} />
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Upload New Photo</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+          </div>
+          
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" disabled={uploading || !selectedFile} className="btn-primary">
+              {uploading ? 'Uploading...' : 'Save'}
+            </button>
+          </div>
+        </form>
+        
+        <div className="modal-actions" style={{ marginTop: '16px' }}>
+          <button type="button" onClick={handleSignOut} className="btn-danger" style={{ flex: 1 }}>
+            Sign Out
+          </button>
         </div>
-    );
-};
+      </div>
+    </div>
+  );
+}
 
 export default SettingsModal;

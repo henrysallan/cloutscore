@@ -5,12 +5,13 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "AIzaSyAGqrkspIPK0PCpp0lNpKOi6TreASzrAWg",
+  authDomain: "cloutscore-fb225.firebaseapp.com",
+  projectId: "cloutscore-fb225",
+  storageBucket: "cloutscore-fb225.firebasestorage.app",
+  messagingSenderId: "791486190583",
+  appId: "1:791486190583:web:d3e28380f23caf5683d4f2",
+  measurementId: "G-NSGZNJHLWB"
 };
 
 // Initialize Firebase

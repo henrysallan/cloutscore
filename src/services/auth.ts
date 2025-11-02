@@ -1,29 +1,52 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { firebaseApp } from "./firebase";
+// src/services/auth.ts
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User,
+} from 'firebase/auth';
+import { app } from './firebase';
 
-const auth = getAuth(firebaseApp);
-const provider = new GoogleAuthProvider();
+export const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
-export const signInWithGoogle = async () => {
-    try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        return user;
-    } catch (error) {
-        console.error("Error during sign-in:", error);
-        throw error;
-    }
-};
+/**
+ * Sign in with Google popup
+ */
+export async function signInWithGoogle(): Promise<User> {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error) {
+    console.error('Error during Google sign-in:', error);
+    throw error;
+  }
+}
 
-export const signOutUser = async () => {
-    try {
-        await signOut(auth);
-    } catch (error) {
-        console.error("Error during sign-out:", error);
-        throw error;
-    }
-};
+/**
+ * Sign out current user
+ */
+export async function signOut(): Promise<void> {
+  try {
+    await firebaseSignOut(auth);
+  } catch (error) {
+    console.error('Error during sign-out:', error);
+    throw error;
+  }
+}
 
-export const getCurrentUser = () => {
-    return auth.currentUser;
-};
+/**
+ * Get current authenticated user
+ */
+export function getCurrentUser(): User | null {
+  return auth.currentUser;
+}
+
+/**
+ * Listen to auth state changes
+ */
+export function onAuthChange(callback: (user: User | null) => void): () => void {
+  return onAuthStateChanged(auth, callback);
+}

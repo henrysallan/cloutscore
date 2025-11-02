@@ -1,23 +1,57 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../services/auth';
-import { User } from '../types';
+import { User } from 'firebase/auth';
+import { signInWithGoogle, signOut, onAuthChange } from '../services/auth';
+import { createProfile, fetchProfileById } from '../services/database';
+import { UserProfile } from '../types';
 
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile | null;
   loading: boolean;
   signIn: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signOutUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // Check if profile exists, create if not
+        try {
+          let userProfile = await fetchProfileById(firebaseUser.uid);
+
+          if (!userProfile) {
+            // Create profile from Google account data
+            const displayName = firebaseUser.displayName || 'User';
+            const [firstName, ...lastNameParts] = displayName.split(' ');
+            const lastName = lastNameParts.join(' ') || '';
+
+            userProfile = await createProfile(
+              firebaseUser.uid,
+              firstName,
+              lastName,
+              firebaseUser.photoURL || '',
+              true // isAuthUser
+            );
+          }
+
+          setProfile(userProfile);
+        } catch (error) {
+          console.error('Error loading/creating profile:', error);
+        }
+      } else {
+        setProfile(null);
+      }
+
       setLoading(false);
     });
 
@@ -25,24 +59,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async () => {
-    await auth.signInWithGoogle();
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+      // Profile will be loaded by the onAuthChange listener
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      setLoading(false);
+      throw error;
+    }
   };
 
-  const signOut = async () => {
-    await auth.signOut();
+  const signOutUser = async () => {
+    try {
+      await signOut();
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
-      {loading ? <div>Loading...</div> : children}
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signOutUser }}>
+      {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = (): AuthContextType => {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
