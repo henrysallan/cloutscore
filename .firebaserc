@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": {
+      "projectId": "your-project-id",
+      "database": "your-database-name",
+      "storage": "your-storage-bucket"
+    }
+  }
+}
